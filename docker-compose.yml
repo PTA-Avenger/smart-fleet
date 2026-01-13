@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. The Message Broker (MQTT)
+  mqtt:
+    image: eclipse-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  # 2. The Database (PostgreSQL)
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: fleet_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+    ports:
+      - "5432:5432"
+
+  # 3. The Backend (Django)
+  backend:
+    build: ./backend
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - mqtt
+
+  # 4. The Dashboard (Grafana)
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - db
